@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum KycStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum PalmEnrollmentStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  PAYMENT
+  TRANSFER
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum Currency {
+  NOK
+  EUR
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+
+model User {
+  id          String    @id @default(cuid())
+  bankidSub   String    @unique @map("bankid_sub")
+  email       String    @unique
+  name        String
+  phoneNumber String?   @map("phone_number")
+  kycStatus   KycStatus @default(PENDING) @map("kyc_status")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  wallet          Wallet?
+  palmEnrollments PalmEnrollment[]
+  sessions        Session[]
+  pushTokens      PushToken[]
+
+  @@map("users")
+}
+
+// ─── Sessions ─────────────────────────────────────────────────────────────────
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  refreshToken String   @unique @map("refresh_token")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// ─── Wallets ──────────────────────────────────────────────────────────────────
+
+model Wallet {
+  id               String   @id @default(cuid())
+  userId           String   @unique @map("user_id")
+  mangopayUserId   String?  @map("mangopay_user_id")
+  mangopayWalletId String?  @map("mangopay_wallet_id")
+  balanceCents     Int      @default(0) @map("balance_cents")
+  currency         Currency @default(NOK)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@map("wallets")
+}
+
+// ─── Palm Enrollments ─────────────────────────────────────────────────────────
+
+model PalmEnrollment {
+  id         String               @id @default(cuid())
+  userId     String               @map("user_id")
+  palmId     String               @unique @map("palm_id")
+  status     PalmEnrollmentStatus @default(ACTIVE)
+  enrolledAt DateTime             @default(now()) @map("enrolled_at")
+  revokedAt  DateTime?            @map("revoked_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([palmId])
+  @@map("palm_enrollments")
+}
+
+// ─── Transactions ─────────────────────────────────────────────────────────────
+
+model Transaction {
+  id             String            @id @default(cuid())
+  walletId       String            @map("wallet_id")
+  amountCents    Int               @map("amount_cents")
+  currency       Currency          @default(NOK)
+  type           TransactionType
+  status         TransactionStatus @default(PENDING)
+  merchantName   String?           @map("merchant_name")
+  terminalId     String?           @map("terminal_id")
+  idempotencyKey String            @unique @map("idempotency_key")
+  mangopayTxId   String?           @map("mangopay_tx_id")
+  metadata       Json              @default("{}")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  wallet Wallet @relation(fields: [walletId], references: [id])
+
+  @@index([walletId])
+  @@index([idempotencyKey])
+  @@index([terminalId])
+  @@map("transactions")
+}
+
+// ─── Push Tokens ──────────────────────────────────────────────────────────────
+
+model PushToken {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  platform  String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_tokens")
+}

@@ -1,0 +1,30 @@
+{
+  "name": "biopay",
+  "private": true,
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "dev:api": "turbo run dev --filter=@biopay/api",
+    "dev:web": "turbo run dev --filter=@biopay/web",
+    "dev:expo": "turbo run dev --filter=@biopay/expo",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint:fix",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "db:generate": "turbo run db:generate --filter=@biopay/db",
+    "db:migrate": "turbo run db:migrate --filter=@biopay/db",
+    "db:push": "turbo run db:push --filter=@biopay/db",
+    "db:studio": "turbo run db:studio --filter=@biopay/db",
+    "clean": "turbo run clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2",
+    "prettier": "^3.4.2"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.4"
+}

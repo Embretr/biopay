@@ -1,0 +1,7 @@
+{
+  "extends": "@biopay/config/typescript/nextjs.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["src"]
+}

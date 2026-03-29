@@ -1,0 +1,12 @@
+{
+  "extends": "@biopay/config/typescript/node.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "paths": {
+      "@biopay/auth": ["../../packages/auth/src/index.ts"],
+      "@biopay/db": ["../../packages/db/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

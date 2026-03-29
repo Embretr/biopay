@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --border: #1e1e2e;
+    --accent: #00e5cc;
+    --text: #e2e8f0;
+    --muted: #64748b;
+  }
+
+  * {
+    @apply border-[#1e1e2e];
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-[#0a0a0f] text-[#e2e8f0];
+    font-family: "Inter", system-ui, sans-serif;
+  }
+}
+
+/* Terminal scanline effect */
+.terminal-scanlines::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 229, 204, 0.015) 2px,
+    rgba(0, 229, 204, 0.015) 4px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Glowing border animation */
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 5px rgba(0, 229, 204, 0.3), 0 0 10px rgba(0, 229, 204, 0.1); }
+  50% { box-shadow: 0 0 10px rgba(0, 229, 204, 0.6), 0 0 20px rgba(0, 229, 204, 0.3), 0 0 40px rgba(0, 229, 204, 0.1); }
+}
+
+.glow-animate {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* Palm scan ring animation */
+@keyframes ring-expand {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+.ring-animate {
+  animation: ring-expand 1.5s ease-out infinite;
+}

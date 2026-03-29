@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 10% 4%;
+    --foreground: 214 32% 91%;
+    --card: 240 9% 8%;
+    --card-foreground: 214 32% 91%;
+    --border: 240 9% 14%;
+    --input: 240 9% 14%;
+    --ring: 174 100% 45%;
+    --brand: 174 100% 45%;
+    --brand-foreground: 240 10% 4%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-[#1e1e2e];
+  }
+  body {
+    @apply bg-[#0a0a0f] text-[#e2e8f0];
+  }
+}
