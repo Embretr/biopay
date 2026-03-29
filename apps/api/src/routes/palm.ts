@@ -1,6 +1,5 @@
 import { FastifyPluginAsync } from "fastify";
 import { ZodTypeProvider } from "fastify-type-provider-zod";
-import { z } from "zod";
 import { prisma } from "@biopay/db";
 import { getPalmIDProvider } from "../providers/palmid/factory.js";
 import { requireAuth } from "../middleware/require-auth.js";
@@ -10,7 +9,7 @@ const palmRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ── GET /palm ──────────────────────────────────────────────────────────────
   app.get(
-    "/palm",
+    "/",
     { preHandler: [requireAuth] },
     async (request, reply) => {
       const enrollment = await prisma.palmEnrollment.findFirst({
@@ -31,17 +30,9 @@ const palmRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ── POST /palm/enroll ──────────────────────────────────────────────────────
   app.post(
-    "/palm/enroll",
+    "/enroll",
     {
       preHandler: [requireAuth],
-      schema: {
-        response: {
-          200: z.object({
-            palmId: z.string(),
-            enrollmentToken: z.string(),
-          }),
-        },
-      },
     },
     async (request, reply) => {
       // Check for existing active enrollment
@@ -73,7 +64,7 @@ const palmRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ── DELETE /palm ───────────────────────────────────────────────────────────
   app.delete(
-    "/palm",
+    "/",
     { preHandler: [requireAuth] },
     async (request, reply) => {
       const enrollment = await prisma.palmEnrollment.findFirst({

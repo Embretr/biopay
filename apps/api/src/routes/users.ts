@@ -9,7 +9,7 @@ const usersRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ── GET /users/me ──────────────────────────────────────────────────────────
   app.get(
-    "/users/me",
+    "/me",
     { preHandler: [requireAuth] },
     async (request, reply) => {
       const user = await prisma.user.findUniqueOrThrow({
@@ -37,7 +37,7 @@ const usersRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ── PATCH /users/me/push-token ─────────────────────────────────────────────
   app.patch(
-    "/users/me/push-token",
+    "/me/push-token",
     {
       preHandler: [requireAuth],
       schema: {
@@ -62,7 +62,7 @@ const usersRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ── GET /users/enrolled — for terminal simulator ───────────────────────────
   // Returns users who have an active palm enrollment (for terminal simulator)
-  app.get("/users/enrolled", async (_request, reply) => {
+  app.get("/enrolled", async (_request, reply) => {
     const enrollments = await prisma.palmEnrollment.findMany({
       where: { status: "ACTIVE" },
       include: { user: { include: { wallet: true } } },

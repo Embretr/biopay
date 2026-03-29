@@ -1,3 +1,4 @@
+import { Text } from "react-native";
 import { Redirect, Tabs } from "expo-router";
 import { useAuthStore } from "../../store/auth-store";
 
@@ -54,13 +55,12 @@ export default function AppLayout() {
 }
 
 function TabIcon({ name, color, size }: { name: string; color: string; size: number }) {
-  // Simple emoji icons to avoid native dependencies in scaffold
   const icons: Record<string, string> = {
     wallet: "💰",
     list: "📋",
     hand: "🖐️",
   };
   return (
-    <span style={{ fontSize: size, color }}>{icons[name] ?? "●"}</span>
-  ) as unknown as React.ReactElement;
+    <Text style={{ fontSize: size - 4, color }}>{icons[name] ?? "●"}</Text>
+  );
 }

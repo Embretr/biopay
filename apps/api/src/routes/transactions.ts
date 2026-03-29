@@ -9,7 +9,7 @@ const transactionsRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ── GET /transactions ──────────────────────────────────────────────────────
   app.get(
-    "/transactions",
+    "/",
     {
       preHandler: [requireAuth],
       schema: {
@@ -66,7 +66,7 @@ const transactionsRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ── GET /transactions/:id ──────────────────────────────────────────────────
   app.get(
-    "/transactions/:id",
+    "/:id",
     {
       preHandler: [requireAuth],
       schema: {

@@ -1,4 +1,5 @@
-import { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync } from "fastify";
+import type { Currency } from "@biopay/db";
 import { prisma } from "@biopay/db";
 import { getPalmIDProvider } from "../providers/palmid/factory.js";
 import { getMangopayProvider } from "../providers/mangopay/factory.js";
@@ -7,6 +8,13 @@ import type { PalmIDWebhookPayload } from "../providers/palmid/types.js";
 import { Expo } from "expo-server-sdk";
 
 const expo = new Expo();
+
+// Use console for logging until pino types are sorted in this module
+const log = {
+  info: (data: unknown, msg?: string) => console.info(msg ?? "", data),
+  warn: (data: unknown, msg?: string) => console.warn(msg ?? "", data),
+  error: (data: unknown, msg?: string) => console.error(msg ?? "", data),
+};
 
 const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
   // ── POST /webhooks/palmid ────────────────────────────────────────────────
@@ -18,16 +26,16 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
   // 3. Be idempotent (duplicate webhooks return same result)
   // 4. Be atomic (balance update + transaction in one DB transaction)
   fastify.post(
-    "/webhooks/palmid",
+    "/palmid",
     {
-      config: { rawBody: true }, // Required by @fastify/raw-body
+      config: { rawBody: true }, // Required by fastify-raw-body
     },
     async (request, reply) => {
       const isMockTerminal = request.headers["x-mock-terminal"] === "true";
 
       // ── 1. Validate signature ──────────────────────────────────────────────
       const provider = getPalmIDProvider();
-      const signature = (request.headers["x-palmid-signature"] as string) ?? "";
+      const signature = (request.headers["x-palmid-signature"] as string | undefined) ?? "";
 
       if (!isMockPalmID || !isMockTerminal) {
         // In real mode, always validate HMAC
@@ -36,7 +44,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
           return reply.status(400).send({ error: "Raw body not available" });
         }
         if (!provider.verifyWebhookSignature(rawBody, signature)) {
-          fastify.log.warn({ signature }, "Invalid PalmID webhook signature");
+          log.warn({ signature }, "Invalid PalmID webhook signature");
           return reply.status(401).send({ error: "Invalid signature" });
         }
       }
@@ -47,7 +55,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         payload;
 
       if (eventType === "PAYMENT_FAILED") {
-        fastify.log.info({ palmId, terminalId }, "PalmID payment failed event received");
+        log.info({ palmId, terminalId }, "PalmID payment failed event received");
         return reply.send({ received: true });
       }
 
@@ -56,7 +64,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         where: { idempotencyKey },
       });
       if (existingTx) {
-        fastify.log.info({ idempotencyKey, txId: existingTx.id }, "Duplicate webhook — returning cached result");
+        log.info({ idempotencyKey, txId: existingTx.id }, "Duplicate webhook — returning cached result");
         return reply.send({
           received: true,
           transactionId: existingTx.id,
@@ -79,7 +87,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       if (!enrollment || enrollment.status !== "ACTIVE") {
-        fastify.log.warn({ palmId }, "Palm enrollment not found or inactive");
+        log.warn({ palmId }, "Palm enrollment not found or inactive");
         return reply.status(404).send({ error: "Palm not registered" });
       }
 
@@ -87,13 +95,13 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
       const wallet = user.wallet;
 
       if (!wallet) {
-        fastify.log.error({ userId: user.id }, "User has no wallet");
+        log.error({ userId: user.id }, "User has no wallet");
         return reply.status(500).send({ error: "User wallet not found" });
       }
 
       // ── 5. Check sufficient balance ────────────────────────────────────────
       if (wallet.balanceCents < amountCents) {
-        fastify.log.info(
+        log.info(
           { balance: wallet.balanceCents, required: amountCents },
           "Insufficient balance for payment",
         );
@@ -103,27 +111,28 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
 
-      // ── 6. Process payment (atomic) ────────────────────────────────────────
+      // ── 6. Process payment ─────────────────────────────────────────────────
       const mangopayProvider = getMangopayProvider();
       let transactionId: string;
 
+      // Validate currency is a valid enum value
+      const txCurrency: Currency =
+        currency === "EUR" ? "EUR" : "NOK";
+
       try {
-        // In mock mode: transfer() deducts balance directly in DB
-        // In real mode: transfer() calls Mangopay API, balance synced via Mangopay webhook
         const transfer = await mangopayProvider.transfer(
           wallet.mangopayWalletId ?? wallet.id,
           "platform_wallet", // merchant/platform wallet — mock ignores this
           amountCents,
-          currency,
+          txCurrency,
           idempotencyKey,
         );
 
-        // Create transaction record atomically
         const transaction = await prisma.transaction.create({
           data: {
             walletId: wallet.id,
             amountCents,
-            currency,
+            currency: txCurrency,
             type: "PAYMENT",
             status: transfer.status === "SUCCEEDED" ? "COMPLETED" : "PENDING",
             merchantName,
@@ -132,23 +141,17 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
             mangopayTxId: transfer.id,
             metadata: {
               palmId,
-              merchantId: payload.merchantId ?? null,
+              merchantId: (payload as unknown as Record<string, unknown>).merchantId ?? null,
               transferId: transfer.id,
               timestamp: payload.timestamp,
             },
           },
         });
 
-        // In mock mode, balance already deducted. In real mode, balance
-        // is updated by the Mangopay webhook (POST /webhooks/mangopay).
         transactionId = transaction.id;
-
-        fastify.log.info(
-          { transactionId, userId: user.id, amountCents },
-          "Payment processed successfully",
-        );
+        log.info({ transactionId, userId: user.id, amountCents }, "Payment processed successfully");
       } catch (err) {
-        fastify.log.error({ err, palmId, idempotencyKey }, "Payment processing failed");
+        log.error({ err, palmId, idempotencyKey }, "Payment processing failed");
         return reply.status(500).send({ error: "Payment processing failed" });
       }
 
@@ -162,7 +165,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
           to: token,
           sound: "default" as const,
           title: "Betaling godkjent ✓",
-          body: `${(amountCents / 100).toFixed(2)} ${currency} hos ${merchantName}`,
+          body: `${(amountCents / 100).toFixed(2)} ${txCurrency} hos ${merchantName}`,
           data: { transactionId, type: "PAYMENT_COMPLETED" },
         }));
 
@@ -172,8 +175,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
             await expo.sendPushNotificationsAsync(chunk);
           }
         } catch (pushErr) {
-          // Non-critical: log but don't fail the webhook
-          fastify.log.warn({ pushErr }, "Push notification failed");
+          log.warn({ pushErr }, "Push notification failed");
         }
       }
 
@@ -182,42 +184,35 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   // ── POST /webhooks/mangopay ────────────────────────────────────────────────
-  // Updates transaction status based on Mangopay event
-  fastify.post("/webhooks/mangopay", async (request, reply) => {
+  fastify.post("/mangopay", async (request, reply) => {
     const body = request.body as {
       EventType?: string;
       RessourceId?: string;
       Date?: number;
     };
 
-    fastify.log.info({ event: body }, "Mangopay webhook received");
+    log.info({ event: body }, "Mangopay webhook received");
 
     const { EventType, RessourceId } = body;
+    if (!EventType || !RessourceId) return reply.send({ received: true });
 
-    if (!EventType || !RessourceId) {
-      return reply.send({ received: true });
-    }
-
-    // Map Mangopay event types to our transaction statuses
     if (EventType === "PAYIN_NORMAL_SUCCEEDED") {
-      // Find transaction by mangopay tx ID and update status + wallet balance
       const tx = await prisma.transaction.findFirst({
         where: { mangopayTxId: RessourceId },
-        include: { wallet: true },
       });
       if (tx && tx.status === "PENDING") {
         await prisma.$transaction([
-          prisma.transaction.update({
-            where: { id: tx.id },
-            data: { status: "COMPLETED" },
-          }),
+          prisma.transaction.update({ where: { id: tx.id }, data: { status: "COMPLETED" } }),
           prisma.wallet.update({
             where: { id: tx.walletId },
             data: { balanceCents: { increment: tx.amountCents } },
           }),
         ]);
       }
-    } else if (EventType === "PAYIN_NORMAL_FAILED" || EventType === "PAYOUT_NORMAL_FAILED") {
+    } else if (
+      EventType === "PAYIN_NORMAL_FAILED" ||
+      EventType === "PAYOUT_NORMAL_FAILED"
+    ) {
       await prisma.transaction.updateMany({
         where: { mangopayTxId: RessourceId, status: "PENDING" },
         data: { status: "FAILED" },

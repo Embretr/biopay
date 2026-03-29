@@ -1,8 +1,8 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import formbody from "@fastify/formbody";
 import rateLimit from "@fastify/rate-limit";
 import rawBody from "fastify-raw-body";
-import fp from "fastify-plugin";
 import { serializerCompiler, validatorCompiler } from "fastify-type-provider-zod";
 import { env } from "./env.js";
 import redisPlugin from "./plugins/redis.js";
@@ -38,6 +38,9 @@ async function buildApp() {
     encoding: "utf8",
     runFirst: true,
   });
+
+  // ── Form body (required for mock BankID login form) ───────────────────────
+  await app.register(formbody);
 
   // ── CORS ───────────────────────────────────────────────────────────────────
   await app.register(cors, {
@@ -80,7 +83,7 @@ async function buildApp() {
 
   // ── Global error handler ───────────────────────────────────────────────────
   app.setErrorHandler((error, request, reply) => {
-    app.log.error({ err: error, url: request.url }, "Unhandled error");
+    console.error("Unhandled error", { err: error, url: request.url });
 
     if (error.statusCode) {
       return reply.status(error.statusCode).send({
@@ -113,10 +116,10 @@ async function main() {
       port: env.API_PORT,
       host: env.API_HOST,
     });
-    app.log.info(`BioPay API running at ${address}`);
-    app.log.info(`Mock mode — BankID: ${!env.BANKID_CLIENT_ID}, PalmID: ${!env.PALMID_API_KEY}, Mangopay: ${!env.MANGOPAY_CLIENT_ID}`);
+    console.info(`BioPay API running at ${address}`);
+    console.info(`Mock mode — BankID: ${!env.BANKID_CLIENT_ID}, PalmID: ${!env.PALMID_API_KEY}, Mangopay: ${!env.MANGOPAY_CLIENT_ID}`);
   } catch (err) {
-    app.log.error(err);
+    console.error(err);
     process.exit(1);
   }
 }

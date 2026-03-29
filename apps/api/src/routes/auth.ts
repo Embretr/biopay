@@ -15,7 +15,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ── POST /auth/bankid/initiate ─────────────────────────────────────────────
   app.post(
-    "/auth/bankid/initiate",
+    "/bankid/initiate",
     {
       schema: {
         body: z.object({
@@ -57,7 +57,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ── GET /auth/bankid/callback ──────────────────────────────────────────────
   app.get(
-    "/auth/bankid/callback",
+    "/bankid/callback",
     {
       schema: {
         querystring: z.object({
@@ -145,7 +145,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ── GET /auth/bankid/mock-login (mock mode only) ───────────────────────────
   if (isMockBankID) {
-    app.get("/auth/bankid/mock-login", {}, async (request, reply) => {
+    app.get("/bankid/mock-login", {}, async (request, reply) => {
       const qs = request.query as { state?: string; redirect_uri?: string };
       const state = qs.state ?? "";
       const redirectUri = qs.redirect_uri ?? "";
@@ -256,7 +256,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
     });
 
     // ── POST /auth/bankid/mock-callback ──────────────────────────────────────
-    app.post("/auth/bankid/mock-callback", {}, async (request, reply) => {
+    app.post("/bankid/mock-callback", {}, async (request, reply) => {
       const body = request.body as { email?: string; name?: string; state?: string; redirect_uri?: string };
       const { email, name, state, redirect_uri } = body;
 
@@ -276,13 +276,10 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ── POST /auth/refresh ─────────────────────────────────────────────────────
   app.post(
-    "/auth/refresh",
+    "/refresh",
     {
       schema: {
         body: z.object({ refreshToken: z.string() }),
-        response: {
-          200: z.object({ accessToken: z.string(), refreshToken: z.string() }),
-        },
       },
     },
     async (request, reply) => {
@@ -330,7 +327,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ── DELETE /auth/logout ────────────────────────────────────────────────────
   app.delete(
-    "/auth/logout",
+    "/logout",
     { preHandler: [requireAuth] },
     async (request, reply) => {
       // Delete all sessions for this user

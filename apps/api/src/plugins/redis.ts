@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
-import Redis from "ioredis";
+import { Redis } from "ioredis";
 import { env } from "../env.js";
 
 declare module "fastify" {
@@ -16,11 +16,11 @@ const redisPlugin: FastifyPluginAsync = async (fastify) => {
   });
 
   redis.on("error", (err) => {
-    fastify.log.error({ err }, "Redis connection error");
+    console.error("Redis connection error", err);
   });
 
   await redis.connect();
-  fastify.log.info("Redis connected");
+  console.info("Redis connected");
 
   fastify.decorate("redis", redis);
 

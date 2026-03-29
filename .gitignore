@@ -17,6 +17,7 @@ out
 .env.local
 .env.*.local
 !.env.example
+packages/db/.env
 
 # Editor
 .vscode

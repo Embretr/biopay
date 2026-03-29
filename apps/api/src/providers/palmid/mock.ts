@@ -1,5 +1,4 @@
 import { createId } from "@paralleldrive/cuid2";
-// Note: @paralleldrive/cuid2 is in api/package.json deps
 import type { PalmIDProvider, PalmEnrollResult } from "./types.js";
 
 /**

@@ -52,7 +52,7 @@ export class RealMangopayProvider implements MangopayProvider {
 
   async createUser(userId: string, email: string, name: string): Promise<MangopayUser> {
     const [firstName, ...rest] = name.split(" ");
-    const lastName = rest.join(" ") || firstName ?? "User";
+    const lastName = (rest.join(" ") || firstName) ?? "User";
 
     const user = await this.request<{ Id: string }>("/users/natural", {
       method: "POST",

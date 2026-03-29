@@ -1,12 +1,17 @@
 {
-  "extends": "@biopay/config/typescript/node.json",
   "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "declaration": false,
     "outDir": "dist",
-    "rootDir": "src",
-    "paths": {
-      "@biopay/auth": ["../../packages/auth/src/index.ts"],
-      "@biopay/db": ["../../packages/db/src/index.ts"]
-    }
+    "composite": false,
+    "noEmit": true
   },
-  "include": ["src"]
+  "include": ["src", "../../packages/auth/src", "../../packages/db/src"]
 }

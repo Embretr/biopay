@@ -12,7 +12,7 @@ const walletRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ── GET /wallet ────────────────────────────────────────────────────────────
   app.get(
-    "/wallet",
+    "/",
     { preHandler: [requireAuth] },
     async (request, reply) => {
       const wallet = await prisma.wallet.findUnique({
@@ -34,7 +34,7 @@ const walletRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ── POST /wallet/deposit ───────────────────────────────────────────────────
   app.post(
-    "/wallet/deposit",
+    "/deposit",
     {
       preHandler: [requireAuth, idempotencyCheck],
       schema: {
@@ -96,7 +96,7 @@ const walletRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ── POST /wallet/withdraw ──────────────────────────────────────────────────
   app.post(
-    "/wallet/withdraw",
+    "/withdraw",
     {
       preHandler: [requireAuth, idempotencyCheck],
       schema: {

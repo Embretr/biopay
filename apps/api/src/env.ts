@@ -1,3 +1,11 @@
+import { config as dotenvConfig } from "dotenv";
+import { resolve } from "path";
+import { fileURLToPath } from "url";
+
+// Load .env from monorepo root (works regardless of cwd)
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
+dotenvConfig({ path: resolve(__dirname, "../../../.env"), override: false });
+
 import { createEnv } from "@t3-oss/env-core";
 import { z } from "zod";
 
