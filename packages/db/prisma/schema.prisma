@@ -55,6 +55,7 @@ model User {
   palmEnrollments PalmEnrollment[]
   sessions        Session[]
   pushTokens      PushToken[]
+  bankAccounts    BankAccount[]
 
   @@map("users")
 }
@@ -132,6 +133,22 @@ model Transaction {
   @@index([idempotencyKey])
   @@index([terminalId])
   @@map("transactions")
+}
+
+// ─── Bank Accounts ────────────────────────────────────────────────────────────
+
+model BankAccount {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  iban      String
+  ownerName String   @map("owner_name")
+  bankName  String   @map("bank_name")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("bank_accounts")
 }
 
 // ─── Push Tokens ──────────────────────────────────────────────────────────────

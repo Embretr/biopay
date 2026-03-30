@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BioPay — Palmebetaling",
+  title: "BioPay — Håndflate-betaling",
   description: "Betal i butikk ved å holde hånden over terminalen. Digital lommebok med BankID.",
 };
 

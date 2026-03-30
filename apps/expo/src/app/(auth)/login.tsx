@@ -2,11 +2,13 @@ import { useState } from "react";
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
 import * as WebBrowser from "expo-web-browser";
+import { useCriiptoVerify } from "@criipto/verify-expo";
 import { authApi } from "../../lib/api";
 import { getRedirectUri, parseAuthDeepLink } from "../../lib/auth";
 import { useAuthStore } from "../../store/auth-store";
@@ -15,29 +17,65 @@ WebBrowser.maybeCompleteAuthSession();
 
 const PRIMARY = "#1f9850";
 
+// Norwegian BankID at substantial assurance level
+const ACR_VALUES = "urn:grn:authn:no:bankid:substantial";
+
+// When EXPO_PUBLIC_IDURA_DOMAIN is absent the app falls back to the mock flow
+// (HTML form served by the API). No Criipto calls are made in mock mode.
+const IS_MOCK = !process.env.EXPO_PUBLIC_IDURA_DOMAIN;
+
 export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const setAuthenticated = useAuthStore((s) => s.setAuthenticated);
 
+  // Hook is always called (React rules), but only used in real mode
+  const { login } = useCriiptoVerify();
+
   const handleBankIDLogin = async () => {
     setLoading(true);
     setError(null);
     try {
-      const redirectUri = getRedirectUri();
-      const { data } = await authApi.initiate(redirectUri);
+      if (IS_MOCK) {
+        // ── Mock flow ──────────────────────────────────────────────────────
+        // Opens a simple HTML form served by the API, no real BankID involved.
+        const redirectUri = getRedirectUri();
+        const { data } = await authApi.initiate(redirectUri);
+        const result = await WebBrowser.openAuthSessionAsync(data.authUrl, redirectUri);
 
-      const result = await WebBrowser.openAuthSessionAsync(data.authUrl, redirectUri);
-
-      if (result.type === "success" && result.url) {
-        const tokens = parseAuthDeepLink(result.url);
-        if (tokens) {
-          await setAuthenticated(tokens);
-        } else {
-          setError("Ugyldig svar fra innlogging. Prøv igjen.");
+        if (result.type === "success" && result.url) {
+          const tokens = parseAuthDeepLink(result.url);
+          if (tokens) {
+            await setAuthenticated(tokens);
+          } else {
+            setError("Ugyldig svar fra innlogging. Prøv igjen.");
+          }
         }
+      } else {
+        // ── Real Criipto / Idura Verify flow ───────────────────────────────
+        // The SDK handles PKCE, browser session, and code exchange.
+        // It redirects back to biopay://auth/callback, which the SDK intercepts.
+        const redirectUri = getRedirectUri();
+        const result = await login(ACR_VALUES, redirectUri);
+
+        if (
+          !result ||
+          typeof result !== "object" ||
+          !("id_token" in result) ||
+          typeof result.id_token !== "string"
+        ) {
+          setError("Innlogging ble avbrutt. Prøv igjen.");
+          return;
+        }
+
+        const { data } = await authApi.exchangeIdToken(result.id_token);
+        await setAuthenticated({
+          accessToken: data.accessToken,
+          refreshToken: data.refreshToken,
+        });
       }
-    } catch {
+    } catch (err) {
+      console.error("BankID login error:", err);
       setError("Kunne ikke starte BankID-innlogging. Prøv igjen.");
     } finally {
       setLoading(false);
@@ -47,9 +85,11 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.logoBox}>
-          <LogoMark />
-        </View>
+        <Image
+          source={require("../../../assets/icon.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <Text style={styles.appName}>BioPay</Text>
         <Text style={styles.tagline}>Betal med håndflaten din</Text>
       </View>
@@ -64,6 +104,12 @@ export default function LoginScreen() {
       {error && (
         <View style={styles.errorBanner}>
           <Text style={styles.errorText}>{error}</Text>
+        </View>
+      )}
+
+      {IS_MOCK && (
+        <View style={styles.mockBanner}>
+          <Text style={styles.mockText}>Mock-modus — ingen ekte BankID</Text>
         </View>
       )}
 
@@ -94,14 +140,6 @@ function FeatureRow({ icon, text }: { icon: React.ReactNode; text: string }) {
     <View style={styles.featureRow}>
       <View style={styles.featureIconBox}>{icon}</View>
       <Text style={styles.featureText}>{text}</Text>
-    </View>
-  );
-}
-
-function LogoMark() {
-  return (
-    <View style={{ width: 36, height: 36, borderWidth: 2, borderColor: "#ffffff", borderRadius: 6, justifyContent: "center", alignItems: "flex-end", paddingRight: 4 }}>
-      <View style={{ width: 12, height: 9, backgroundColor: "#ffffff", borderRadius: 3 }} />
     </View>
   );
 }
@@ -157,13 +195,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 48,
   },
-  logoBox: {
-    width: 72,
-    height: 72,
-    backgroundColor: PRIMARY,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
+  logo: {
+    width: 100,
+    height: 100,
     marginBottom: 16,
   },
   appName: {
@@ -206,12 +240,26 @@ const styles = StyleSheet.create({
     borderColor: "#fecaca",
     borderRadius: 10,
     padding: 12,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   errorText: {
     color: "#dc2626",
     fontSize: 14,
     textAlign: "center",
+  },
+  mockBanner: {
+    backgroundColor: "#fefce8",
+    borderWidth: 1,
+    borderColor: "#fde68a",
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 12,
+    alignItems: "center",
+  },
+  mockText: {
+    color: "#92400e",
+    fontSize: 12,
+    fontWeight: "500",
   },
   footer: {
     gap: 16,

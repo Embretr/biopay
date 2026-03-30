@@ -12,6 +12,7 @@ import palmRoutes from "./routes/palm.js";
 import walletRoutes from "./routes/wallet.js";
 import transactionsRoutes from "./routes/transactions.js";
 import webhooksRoutes from "./routes/webhooks.js";
+import bankAccountRoutes from "./routes/bank-accounts.js";
 
 async function buildApp() {
   const app = Fastify({
@@ -80,6 +81,7 @@ async function buildApp() {
   await app.register(walletRoutes, { prefix: "/wallet" });
   await app.register(transactionsRoutes, { prefix: "/transactions" });
   await app.register(webhooksRoutes, { prefix: "/webhooks" });
+  await app.register(bankAccountRoutes, { prefix: "/bank-accounts" });
 
   // ── Global error handler ───────────────────────────────────────────────────
   app.setErrorHandler((error, request, reply) => {

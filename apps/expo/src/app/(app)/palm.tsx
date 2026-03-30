@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -7,12 +7,17 @@ import {
   ActivityIndicator,
   ScrollView,
   Modal,
+  Animated,
+  Dimensions,
 } from "react-native";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import { palmApi } from "../../lib/api";
 
 const PRIMARY = "#1f9850";
+const { width: SCREEN_W } = Dimensions.get("window");
 
 type PalmEnrollment = { palmId: string; status: string; enrolledAt: string } | null;
+type ScanPhase = "idle" | "scanning" | "done";
 
 export default function PalmScreen() {
   const [enrollment, setEnrollment] = useState<PalmEnrollment | null | undefined>(undefined);
@@ -21,6 +26,13 @@ export default function PalmScreen() {
   // Sheets
   const [enrollSheetVisible, setEnrollSheetVisible] = useState(false);
   const [revokeSheetVisible, setRevokeSheetVisible] = useState(false);
+
+  // Camera scan
+  const [cameraVisible, setCameraVisible] = useState(false);
+  const [scanPhase, setScanPhase] = useState<ScanPhase>("idle");
+  const scanProgress = useRef(new Animated.Value(0)).current;
+  const scanLineY = useRef(new Animated.Value(0)).current;
+  const [permission, requestPermission] = useCameraPermissions();
 
   // Inline feedback
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -39,20 +51,54 @@ export default function PalmScreen() {
     loadEnrollment();
   }, [loadEnrollment]);
 
-  const handleEnroll = async () => {
+  const startCameraScan = async () => {
     setEnrollSheetVisible(false);
+    if (!permission?.granted) {
+      const result = await requestPermission();
+      if (!result.granted) {
+        setErrorMsg("Kameratilgang er nødvendig for å registrere håndflaten.");
+        return;
+      }
+    }
+    scanProgress.setValue(0);
+    scanLineY.setValue(0);
+    setScanPhase("scanning");
+    setCameraVisible(true);
+
+    // Animate scan line bouncing up/down
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(scanLineY, { toValue: 1, duration: 1200, useNativeDriver: true }),
+        Animated.timing(scanLineY, { toValue: 0, duration: 1200, useNativeDriver: true }),
+      ])
+    ).start();
+
+    // After 3s fake scan completes
+    setTimeout(() => {
+      setScanPhase("done");
+    }, 3000);
+  };
+
+  const confirmScan = async () => {
+    setCameraVisible(false);
+    setScanPhase("idle");
     setLoading(true);
     setErrorMsg(null);
     try {
       await palmApi.enroll();
       await loadEnrollment();
-      setSuccessMsg("Du kan nå betale i butikker med PalmID-terminal.");
+      setSuccessMsg("Du kan nå betale i butikker med PalmID-terminal ved å holde hånden over leseren.");
       setTimeout(() => setSuccessMsg(null), 3500);
     } catch {
-      setErrorMsg("Kunne ikke registrere palme. Prøv igjen.");
+      setErrorMsg("Kunne ikke registrere håndflate. Prøv igjen.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const cancelScan = () => {
+    setCameraVisible(false);
+    setScanPhase("idle");
   };
 
   const handleRevoke = async () => {
@@ -62,7 +108,7 @@ export default function PalmScreen() {
     try {
       await palmApi.revoke();
       setEnrollment(null);
-      setSuccessMsg("Palmeregistreringen er fjernet.");
+      setSuccessMsg("Håndflateregistreringen er fjernet.");
       setTimeout(() => setSuccessMsg(null), 3000);
     } catch {
       setErrorMsg("Kunne ikke slette registrering. Prøv igjen.");
@@ -108,7 +154,7 @@ export default function PalmScreen() {
         </View>
 
         <Text style={styles.title}>
-          {enrollment ? "Palme registrert" : "Ingen palmeregistrering"}
+          {enrollment ? "Håndflate registrert" : "Ingen håndflateregistrering"}
         </Text>
         <Text style={styles.subtitle}>
           {enrollment
@@ -134,7 +180,7 @@ export default function PalmScreen() {
         {!enrollment && (
           <View style={styles.stepsCard}>
             <Text style={styles.stepsTitle}>Slik fungerer det</Text>
-            <StepRow step="1" text="Trykk «Registrer palme» nedenfor" />
+            <StepRow step="1" text="Trykk «Registrer håndflate» nedenfor" />
             <StepRow step="2" text="Hold hånden flat foran frontkameraet" />
             <StepRow step="3" text="BioPay registrerer din unike håndlinjer" />
             <StepRow step="4" text="Betal i butikk ved å holde hånden over terminalen" />
@@ -155,13 +201,13 @@ export default function PalmScreen() {
             <ActivityIndicator color={enrollment ? "#dc2626" : "#ffffff"} />
           ) : (
             <Text style={[styles.buttonText, enrollment && styles.revokeButtonText]}>
-              {enrollment ? "Slett palmeregistrering" : "Registrer palme"}
+              {enrollment ? "Slett håndflateregistrering" : "Registrer håndflate"}
             </Text>
           )}
         </TouchableOpacity>
 
         <Text style={styles.gdprNote}>
-          Palmebiometri behandles og lagres eksklusivt av PalmID (Redrock Biometrics) — aldri av BioPay.
+          Håndflatebiometri behandles og lagres eksklusivt av PalmID (Redrock Biometrics) — aldri av BioPay.
           Ditt samtykke kan til enhver tid trekkes tilbake ved å slette registreringen.
         </Text>
       </ScrollView>
@@ -174,7 +220,7 @@ export default function PalmScreen() {
           <View style={styles.sheetIconCircle}>
             <PalmSvgIcon color={PRIMARY} />
           </View>
-          <Text style={styles.sheetTitle}>Registrer palme</Text>
+          <Text style={styles.sheetTitle}>Registrer håndflate</Text>
           <Text style={styles.sheetBody}>
             Du vil nå registrere håndflaten din for betaling. Hold hånden flat foran kameraet.
           </Text>
@@ -182,9 +228,78 @@ export default function PalmScreen() {
             <TouchableOpacity style={styles.cancelButton} onPress={() => setEnrollSheetVisible(false)}>
               <Text style={styles.cancelButtonText}>Avbryt</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.confirmButton} onPress={handleEnroll}>
+            <TouchableOpacity style={styles.confirmButton} onPress={startCameraScan}>
               <Text style={styles.confirmButtonText}>Start registrering</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Camera scan modal ── */}
+      <Modal visible={cameraVisible} animationType="slide" statusBarTranslucent>
+        <View style={styles.cameraContainer}>
+          <CameraView style={StyleSheet.absoluteFill} facing="front" />
+
+          {/* Dark overlay with cutout */}
+          <View style={styles.cameraOverlay}>
+            {/* Top bar */}
+            <View style={styles.cameraTopBar}>
+              <TouchableOpacity onPress={cancelScan} style={styles.cameraCloseBtn}>
+                <View style={[styles.revokeBar, { transform: [{ rotate: "45deg" }] }]} />
+                <View style={[styles.revokeBar, { transform: [{ rotate: "-45deg" }], position: "absolute" }]} />
+              </TouchableOpacity>
+              <Text style={styles.cameraTitle}>
+                {scanPhase === "done" ? "Skannet!" : "Skanner håndflate..."}
+              </Text>
+              <View style={{ width: 36 }} />
+            </View>
+
+            {/* Hand frame */}
+            <View style={styles.handFrame}>
+              {/* Corner brackets */}
+              <View style={[styles.corner, styles.cornerTL]} />
+              <View style={[styles.corner, styles.cornerTR]} />
+              <View style={[styles.corner, styles.cornerBL]} />
+              <View style={[styles.corner, styles.cornerBR]} />
+
+              {scanPhase === "scanning" && (
+                <Animated.View
+                  style={[
+                    styles.scanLine,
+                    {
+                      transform: [{
+                        translateY: scanLineY.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, 180],
+                        }),
+                      }],
+                    },
+                  ]}
+                />
+              )}
+
+              {scanPhase === "done" && (
+                <View style={styles.scanDone}>
+                  <View style={styles.checkCircle}>
+                    <View style={styles.checkMark} />
+                  </View>
+                </View>
+              )}
+            </View>
+
+            <Text style={styles.cameraHint}>
+              {scanPhase === "done"
+                ? "Håndflaten din er registrert"
+                : "Hold hånden flat foran kameraet"}
+            </Text>
+
+            {scanPhase === "done" ? (
+              <TouchableOpacity style={styles.cameraConfirmBtn} onPress={confirmScan}>
+                <Text style={styles.cameraConfirmText}>Fullfør registrering</Text>
+              </TouchableOpacity>
+            ) : (
+              <ActivityIndicator color="#ffffff" style={{ marginTop: 8 }} />
+            )}
           </View>
         </View>
       </Modal>
@@ -200,9 +315,9 @@ export default function PalmScreen() {
               <View style={[styles.revokeBar, { transform: [{ rotate: "-45deg" }], position: "absolute" }]} />
             </View>
           </View>
-          <Text style={styles.sheetTitle}>Slett palmeregistrering?</Text>
+          <Text style={styles.sheetTitle}>Slett håndflateregistrering?</Text>
           <Text style={styles.sheetBody}>
-            Er du sikker? Du vil ikke kunne betale med palme etter dette.
+            Er du sikker? Du vil ikke kunne betale med håndflaten etter dette.
           </Text>
           <View style={styles.sheetActions}>
             <TouchableOpacity style={styles.cancelButton} onPress={() => setRevokeSheetVisible(false)}>
@@ -432,4 +547,94 @@ const styles = StyleSheet.create({
   destructiveButtonText: { color: "#ffffff", fontWeight: "700", fontSize: 16 },
   revokeX: { width: 20, height: 20, alignItems: "center", justifyContent: "center" },
   revokeBar: { width: 20, height: 2.5, backgroundColor: "#dc2626", borderRadius: 2 },
+
+  // Camera
+  cameraContainer: { flex: 1, backgroundColor: "#000000" },
+  cameraOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: 60,
+    paddingBottom: 60,
+    paddingHorizontal: 24,
+  },
+  cameraTopBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  cameraCloseBtn: {
+    width: 36,
+    height: 36,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cameraTitle: { color: "#ffffff", fontSize: 17, fontWeight: "700" },
+  handFrame: {
+    width: SCREEN_W * 0.72,
+    height: 220,
+    borderRadius: 16,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  corner: {
+    position: "absolute",
+    width: 28,
+    height: 28,
+    borderColor: PRIMARY,
+    borderWidth: 3,
+  },
+  cornerTL: { top: 0, left: 0, borderRightWidth: 0, borderBottomWidth: 0, borderTopLeftRadius: 8 },
+  cornerTR: { top: 0, right: 0, borderLeftWidth: 0, borderBottomWidth: 0, borderTopRightRadius: 8 },
+  cornerBL: { bottom: 0, left: 0, borderRightWidth: 0, borderTopWidth: 0, borderBottomLeftRadius: 8 },
+  cornerBR: { bottom: 0, right: 0, borderLeftWidth: 0, borderTopWidth: 0, borderBottomRightRadius: 8 },
+  scanLine: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 2,
+    backgroundColor: PRIMARY,
+    opacity: 0.85,
+    shadowColor: PRIMARY,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 6,
+  },
+  scanDone: { alignItems: "center", justifyContent: "center" },
+  checkCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: PRIMARY,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkMark: {
+    width: 28,
+    height: 16,
+    borderBottomWidth: 3,
+    borderLeftWidth: 3,
+    borderColor: "#ffffff",
+    transform: [{ rotate: "-45deg" }, { translateY: -4 }],
+  },
+  cameraHint: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 15,
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  cameraConfirmBtn: {
+    backgroundColor: PRIMARY,
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    alignItems: "center",
+  },
+  cameraConfirmText: { color: "#ffffff", fontWeight: "700", fontSize: 16 },
 });

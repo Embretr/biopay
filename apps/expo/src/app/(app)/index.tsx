@@ -10,15 +10,13 @@ import {
   Modal,
   ActivityIndicator,
 } from "react-native";
+import { router } from "expo-router";
 import * as Crypto from "expo-crypto";
 import { usersApi, walletApi, transactionsApi, type Transaction } from "../../lib/api";
-import { useAuthStore } from "../../store/auth-store";
-import { authApi } from "../../lib/api";
 
 const PRIMARY = "#1f9850";
 
 export default function HomeScreen() {
-  const { logout } = useAuthStore();
   const [profile, setProfile] = useState<Awaited<ReturnType<typeof usersApi.me>>["data"] | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -30,9 +28,12 @@ export default function HomeScreen() {
   const [depositLoading, setDepositLoading] = useState(false);
   const [depositSuccess, setDepositSuccess] = useState<string | null>(null);
 
-  // Logout confirm sheet
-  const [logoutVisible, setLogoutVisible] = useState(false);
-  const [logoutLoading, setLogoutLoading] = useState(false);
+  // Withdraw sheet
+  const [withdrawVisible, setWithdrawVisible] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawIban, setWithdrawIban] = useState("");
+  const [withdrawError, setWithdrawError] = useState<string | null>(null);
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -90,14 +91,41 @@ export default function HomeScreen() {
     }
   };
 
-  const handleLogout = async () => {
-    setLogoutLoading(true);
+  const handleWithdraw = async () => {
+    setWithdrawError(null);
+    const cents = Math.round(parseFloat(withdrawAmount) * 100);
+    if (isNaN(cents) || cents <= 0) {
+      setWithdrawError("Skriv inn et gyldig beløp.");
+      return;
+    }
+    const iban = withdrawIban.trim().replace(/\s/g, "");
+    if (iban.length < 10) {
+      setWithdrawError("Skriv inn et gyldig IBAN-nummer.");
+      return;
+    }
+    setWithdrawLoading(true);
     try {
-      await authApi.logout();
-    } catch {}
-    await logout();
-    setLogoutLoading(false);
-    setLogoutVisible(false);
+      const hash = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        Date.now().toString() + iban + Math.random().toString(),
+      );
+      const key =
+        hash.slice(0, 8) + "-" + hash.slice(8, 12) + "-4" +
+        hash.slice(13, 16) + "-" + hash.slice(16, 20) + "-" + hash.slice(20, 32);
+      await walletApi.withdraw(cents, iban, key);
+      setWithdrawVisible(false);
+      setWithdrawAmount("");
+      setWithdrawIban("");
+      await loadData();
+      setDepositSuccess(`${(cents / 100).toFixed(2)} NOK er sendt til bankkontoen din.`);
+      setTimeout(() => setDepositSuccess(null), 3500);
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 402) setWithdrawError("Ikke nok penger på kontoen.");
+      else setWithdrawError("Uttak feilet. Prøv igjen.");
+    } finally {
+      setWithdrawLoading(false);
+    }
   };
 
   const balance = profile?.wallet?.balanceCents ?? 0;
@@ -123,12 +151,26 @@ export default function HomeScreen() {
             {(balance / 100).toLocaleString("nb-NO", { minimumFractionDigits: 2 })} NOK
           </Text>
           <Text style={styles.walletName}>{profile?.name ?? "—"}</Text>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => { setDepositAmount(""); setDepositError(null); setDepositVisible(true); }}
-          >
-            <Text style={styles.actionButtonText}>+ Sett inn</Text>
-          </TouchableOpacity>
+          <View style={styles.walletActions}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => { setDepositAmount(""); setDepositError(null); setDepositVisible(true); }}
+            >
+              <Text style={styles.actionButtonText}>+ Sett inn</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push("/(app)/send")}
+            >
+              <Text style={styles.actionButtonText}>Send</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => { setWithdrawAmount(""); setWithdrawIban(""); setWithdrawError(null); setWithdrawVisible(true); }}
+            >
+              <Text style={styles.actionButtonText}>Ta ut</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Recent transactions */}
@@ -141,10 +183,6 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* Logout */}
-        <TouchableOpacity style={styles.logoutButton} onPress={() => setLogoutVisible(true)}>
-          <Text style={styles.logoutText}>Logg ut</Text>
-        </TouchableOpacity>
       </ScrollView>
 
       {/* ── Deposit bottom sheet ── */}
@@ -191,28 +229,59 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
-      {/* ── Logout confirm sheet ── */}
-      <Modal visible={logoutVisible} transparent animationType="slide" onRequestClose={() => setLogoutVisible(false)}>
-        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setLogoutVisible(false)} />
+      {/* ── Withdraw sheet ── */}
+      <Modal visible={withdrawVisible} transparent animationType="slide" onRequestClose={() => setWithdrawVisible(false)}>
+        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setWithdrawVisible(false)} />
         <View style={styles.sheet}>
           <View style={styles.sheetHandle} />
-          <View style={styles.confirmIconCircle}>
-            <View style={styles.confirmIconDoor} />
+          <Text style={styles.sheetTitle}>Ta ut penger</Text>
+
+          <View style={styles.sendInputGroup}>
+            <Text style={styles.sendLabel}>Beløp</Text>
+            <View style={styles.amountInputWrapper}>
+              <TextInput
+                style={styles.amountInput}
+                value={withdrawAmount}
+                onChangeText={(v) => { setWithdrawAmount(v); setWithdrawError(null); }}
+                placeholder="0.00"
+                placeholderTextColor="#d1d5db"
+                keyboardType="decimal-pad"
+                autoFocus
+              />
+              <Text style={styles.currencyHint}>NOK</Text>
+            </View>
           </View>
-          <Text style={styles.sheetTitle}>Logg ut?</Text>
-          <Text style={styles.sheetSubtitle}>Du må logge inn på nytt med BankID for å bruke BioPay.</Text>
+
+          <View style={styles.sendInputGroup}>
+            <Text style={styles.sendLabel}>IBAN</Text>
+            <TextInput
+              style={styles.sendInput}
+              value={withdrawIban}
+              onChangeText={(v) => { setWithdrawIban(v); setWithdrawError(null); }}
+              placeholder="NO93 1234 5678 901"
+              placeholderTextColor="#d1d5db"
+              autoCapitalize="characters"
+            />
+          </View>
+
+          {withdrawError && (
+            <View style={styles.sheetError}>
+              <Text style={styles.sheetErrorText}>{withdrawError}</Text>
+            </View>
+          )}
+
           <View style={styles.sheetActions}>
-            <TouchableOpacity style={styles.cancelButton} onPress={() => setLogoutVisible(false)}>
+            <TouchableOpacity style={styles.cancelButton} onPress={() => setWithdrawVisible(false)}>
               <Text style={styles.cancelButtonText}>Avbryt</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.destructiveButton, logoutLoading && styles.buttonDisabled]}
-              onPress={handleLogout}
-              disabled={logoutLoading}
+              style={[styles.confirmButton, withdrawLoading && styles.buttonDisabled]}
+              onPress={handleWithdraw}
+              disabled={withdrawLoading}
             >
-              {logoutLoading
+              {withdrawLoading
                 ? <ActivityIndicator color="#ffffff" size="small" />
-                : <Text style={styles.destructiveButtonText}>Logg ut</Text>
+                : <Text style={styles.confirmButtonText}>Ta ut</Text>
               }
             </TouchableOpacity>
           </View>
@@ -300,15 +369,26 @@ const styles = StyleSheet.create({
   walletLabel: { fontSize: 12, color: "rgba(255,255,255,0.75)", letterSpacing: 0.8, textTransform: "uppercase" },
   walletBalance: { fontSize: 40, fontWeight: "800", color: "#ffffff", marginTop: 4, letterSpacing: -1 },
   walletName: { fontSize: 14, color: "rgba(255,255,255,0.7)", marginTop: 2 },
+  walletActions: { flexDirection: "row", gap: 10, marginTop: 20 },
   actionButton: {
-    marginTop: 20,
     backgroundColor: "rgba(255,255,255,0.2)",
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 20,
-    alignSelf: "flex-start",
   },
   actionButtonText: { color: "#ffffff", fontWeight: "700", fontSize: 15 },
+
+  sendInputGroup: { gap: 6 },
+  sendLabel: { fontSize: 14, fontWeight: "600", color: "#374151" },
+  sendInput: {
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    borderRadius: 10,
+    padding: 14,
+    fontSize: 16,
+    color: "#111827",
+    backgroundColor: "#ffffff",
+  },
 
   section: { gap: 10 },
   sectionTitle: { fontSize: 17, fontWeight: "700", color: "#111827" },
@@ -332,16 +412,6 @@ const styles = StyleSheet.create({
   txAmountCol: { alignItems: "flex-end" },
   txAmount: { fontSize: 15, fontWeight: "700" },
   statusBadge: { fontSize: 11, fontWeight: "600", marginTop: 2 },
-
-  logoutButton: {
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-    backgroundColor: "#ffffff",
-  },
-  logoutText: { color: "#dc2626", fontWeight: "600" },
 
   // Sheet
   overlay: {
@@ -403,30 +473,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   confirmButtonText: { color: "#ffffff", fontWeight: "700", fontSize: 16 },
-  destructiveButton: {
-    flex: 1,
-    backgroundColor: "#dc2626",
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-  },
-  destructiveButtonText: { color: "#ffffff", fontWeight: "700", fontSize: 16 },
   buttonDisabled: { opacity: 0.6 },
-  confirmIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#fef2f2",
-    alignSelf: "center",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  confirmIconDoor: {
-    width: 20,
-    height: 22,
-    borderWidth: 2,
-    borderColor: "#dc2626",
-    borderRadius: 3,
-    borderRightWidth: 0,
-  },
 });

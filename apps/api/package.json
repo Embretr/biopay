@@ -29,6 +29,7 @@
     "fastify-raw-body": "^4.3.0",
     "fastify-type-provider-zod": "^2.0.0",
     "ioredis": "^5.4.2",
+    "jose": "^5.9.6",
     "openid-client": "^5.7.1",
     "pino-pretty": "^13.0.0",
     "zod": "^3.24.1"

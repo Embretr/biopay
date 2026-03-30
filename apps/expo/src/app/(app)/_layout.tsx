@@ -48,11 +48,25 @@ export default function AppLayout() {
       <Tabs.Screen
         name="palm"
         options={{
-          title: "Palme",
-          tabBarLabel: "Palme",
+          title: "Håndflate",
+          tabBarLabel: "Håndflate",
           tabBarIcon: ({ color }) => <PalmIcon color={color} />,
-          headerTitle: "Palmeregistrering",
+          headerTitle: "Håndflateregistrering",
         }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Konto",
+          tabBarLabel: "Konto",
+          tabBarIcon: ({ color }) => <PersonIcon color={color} />,
+          headerTitle: "Innstillinger",
+        }}
+      />
+      <Tabs.Screen name="send" options={{ href: null, headerTitle: "Send penger" }} />
+      <Tabs.Screen
+        name="transactions/[id]"
+        options={{ href: null }}
       />
     </Tabs>
   );
@@ -82,6 +96,15 @@ function PalmIcon({ color }: { color: string }) {
       {[14, 18, 20, 18, 16].map((h, i) => (
         <View key={i} style={{ width: 3, height: h, backgroundColor: color, borderRadius: 2 }} />
       ))}
+    </View>
+  );
+}
+
+function PersonIcon({ color }: { color: string }) {
+  return (
+    <View style={{ alignItems: "center", gap: 2 }}>
+      <View style={{ width: 12, height: 12, borderRadius: 6, borderWidth: 1.5, borderColor: color }} />
+      <View style={{ width: 20, height: 8, borderTopLeftRadius: 10, borderTopRightRadius: 10, borderWidth: 1.5, borderColor: color, borderBottomWidth: 0 }} />
     </View>
   );
 }

@@ -1,5 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import * as Linking from "expo-linking";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import { makeRedirectUri } from "expo-auth-session";
 
 const ACCESS_TOKEN_KEY = "biopay_access_token";
@@ -61,7 +62,20 @@ export function parseAuthDeepLink(url: string): Tokens | null {
   }
 }
 
-/** Returns the deep link redirect URI for BankID callback */
+function nativeAppScheme(): string {
+  const s = Constants.expoConfig?.scheme;
+  if (typeof s === "string") return s;
+  if (Array.isArray(s) && s[0]) return s[0];
+  return "biopay";
+}
+
+/**
+ * Redirect URI sent to Idura / OAuth. Must match a URI registered on the client (exact string).
+ * Avoids makeRedirectUri + path, which becomes `biopay:///auth/callback` and is rejected by Idura.
+ */
 export function getRedirectUri(): string {
-  return makeRedirectUri({ scheme: "biopay", path: "auth/callback" });
+  if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) {
+    return makeRedirectUri({ path: "auth/callback" });
+  }
+  return `${nativeAppScheme()}://auth/callback`;
 }

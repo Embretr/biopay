@@ -31,6 +31,11 @@ export const env = createEnv({
     BANKID_ISSUER: z.string().url().optional(),
     BANKID_REDIRECT_URI: z.string().url().optional(),
 
+    // ── Idura Verify (Criipto) — client-side OIDC SDK ───────────────────────
+    // Domain of your Idura Verify application, e.g. biopay.idura.eu
+    // Used to verify id_tokens issued by the @criipto/verify-expo SDK
+    IDURA_DOMAIN: z.string().optional(),
+
     // ── PalmID SaaS (optional — mock mode if absent) ────────────────────────
     PALMID_API_KEY: z.string().optional(),
     PALMID_API_BASE_URL: z.string().url().optional(),

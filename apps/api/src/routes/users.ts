@@ -60,6 +60,37 @@ const usersRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
+  // ── GET /users/search?q= ──────────────────────────────────────────────────
+  app.get(
+    "/search",
+    {
+      preHandler: [requireAuth],
+      schema: {
+        querystring: z.object({ q: z.string().min(1).max(100) }),
+      },
+    },
+    async (request, reply) => {
+      const { q } = request.query;
+
+      const users = await prisma.user.findMany({
+        where: {
+          id: { not: request.userId },
+          name: { contains: q, mode: "insensitive" },
+        },
+        take: 20,
+        select: { id: true, name: true, email: true },
+      });
+
+      return reply.send(
+        users.map((u) => {
+          const [local, domain] = u.email.split("@");
+          const masked = local.slice(0, 2) + "***@" + domain;
+          return { id: u.id, name: u.name, maskedEmail: masked };
+        }),
+      );
+    },
+  );
+
   // ── GET /users/enrolled — for terminal simulator ───────────────────────────
   // Returns users who have an active palm enrollment (for terminal simulator)
   app.get("/enrolled", async (_request, reply) => {

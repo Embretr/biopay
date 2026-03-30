@@ -16,10 +16,12 @@
   "dependencies": {
     "@babel/runtime": "^7.29.2",
     "@biopay/auth": "workspace:*",
+    "@criipto/verify-expo": "^3.0.4",
     "@expo/vector-icons": "^14.0.0",
     "axios": "^1.7.9",
     "expo": "~52.0.0",
     "expo-auth-session": "~6.0.0",
+    "expo-camera": "~16.0.0",
     "expo-constants": "~17.0.0",
     "expo-crypto": "~13.0.0",
     "expo-device": "~7.0.3",

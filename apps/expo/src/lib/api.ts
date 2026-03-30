@@ -107,13 +107,22 @@ export interface Transaction {
 export const authApi = {
   initiate: (redirectUri?: string) =>
     api.post<{ authUrl: string; state: string }>("/auth/bankid/initiate", { redirectUri }),
+  exchangeIdToken: (idToken: string) =>
+    api.post<{ accessToken: string; refreshToken: string }>("/auth/bankid/exchange", { idToken }),
   refresh: (refreshToken: string) =>
     api.post<{ accessToken: string; refreshToken: string }>("/auth/refresh", { refreshToken }),
   logout: () => api.delete("/auth/logout"),
 };
 
+export interface UserSearchResult {
+  id: string;
+  name: string;
+  maskedEmail: string;
+}
+
 export const usersApi = {
   me: () => api.get<UserProfile>("/users/me"),
+  search: (q: string) => api.get<UserSearchResult[]>("/users/search", { params: { q } }),
   registerPushToken: (token: string, platform: "ios" | "android") =>
     api.patch("/users/me/push-token", { token, platform }),
 };
@@ -138,6 +147,33 @@ export const walletApi = {
       { amountCents, currency: "NOK", bankAccountIban },
       { headers: { "Idempotency-Key": idempotencyKey } },
     ),
+  transfer: (recipientEmail: string, amountCents: number, idempotencyKey: string) =>
+    api.post(
+      "/wallet/transfer",
+      { recipientEmail, amountCents },
+      { headers: { "Idempotency-Key": idempotencyKey } },
+    ),
+  transferById: (recipientId: string, amountCents: number, idempotencyKey: string) =>
+    api.post(
+      "/wallet/transfer-by-id",
+      { recipientId, amountCents },
+      { headers: { "Idempotency-Key": idempotencyKey } },
+    ),
+};
+
+export interface BankAccount {
+  id: string;
+  iban: string;
+  ownerName: string;
+  bankName: string;
+  createdAt: string;
+}
+
+export const bankAccountsApi = {
+  list: () => api.get<BankAccount[]>("/bank-accounts"),
+  add: (iban: string, ownerName: string, bankName: string) =>
+    api.post<BankAccount>("/bank-accounts", { iban, ownerName, bankName }),
+  remove: (id: string) => api.delete(`/bank-accounts/${id}`),
 };
 
 export const transactionsApi = {

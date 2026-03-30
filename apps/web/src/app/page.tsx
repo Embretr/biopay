@@ -42,7 +42,7 @@ export default function LandingPage() {
             style={{ backgroundColor: "#e8f5ee", color: "#1f9850" }}
           >
             <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: "#1f9850" }} />
-            Palmebetaling · Norsk BankID · PSD2-sertifisert
+            Håndflate-betaling · Norsk BankID · PSD2-sertifisert
           </div>
 
           <h1 className="text-5xl md:text-7xl font-extrabold text-gray-900 leading-tight tracking-tight mb-4 uppercase">

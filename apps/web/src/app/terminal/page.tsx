@@ -134,7 +134,7 @@ function TerminalHeader({ step }: { step: string }) {
       </div>
 
       <div className="flex gap-1.5">
-        {["Butikk", "Beløp", "Palme", "Prosesserer"].map((label, i) => (
+        {["Butikk", "Beløp", "Håndflate", "Prosesserer"].map((label, i) => (
           <div key={label} className="flex-1">
             <div
               className="h-1 rounded-full transition-all duration-500"
@@ -299,7 +299,7 @@ function PalmScan({
       ) : users.length === 0 ? (
         <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center">
           <div className="text-gray-900 font-medium mb-1">Ingen brukere funnet</div>
-          <div className="text-gray-400 text-sm">Registrer en palme i mobilappen for å teste betalingen.</div>
+          <div className="text-gray-400 text-sm">Registrer en håndflate i mobilappen for å teste betalingen.</div>
         </div>
       ) : (
         <div className="flex flex-col gap-2">
