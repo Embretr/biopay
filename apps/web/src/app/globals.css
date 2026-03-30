@@ -24,37 +24,7 @@
   }
 }
 
-/* Subtle green blob backgrounds */
-.blob-bg {
-  position: relative;
-  overflow: hidden;
-}
-
-.blob-bg::before {
-  content: "";
-  position: absolute;
-  top: -20%;
-  right: -10%;
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, rgba(31, 152, 80, 0.08) 0%, transparent 70%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.blob-bg::after {
-  content: "";
-  position: absolute;
-  bottom: -10%;
-  left: -10%;
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(31, 152, 80, 0.05) 0%, transparent 70%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* Terminal scanline effect (kept for terminal page) */
+/* Terminal scanline effect (optional overlay) */
 .terminal-scanlines::after {
   content: "";
   position: fixed;

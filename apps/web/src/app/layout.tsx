@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BioPay — Håndflate-betaling",
-  description: "Betal i butikk ved å holde hånden over terminalen. Digital lommebok med BankID.",
+  title: "BioPay — betalingsterminal (mock)",
+  description: "Lokal mock av PalmID-betalingsterminal for utvikling og testing.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
