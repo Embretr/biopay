@@ -1,4 +1,4 @@
 {
-  "extends": "@biopay/config/typescript/react-native.json",
+  "extends": "../../packages/config/typescript/react-native.json",
   "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
 }

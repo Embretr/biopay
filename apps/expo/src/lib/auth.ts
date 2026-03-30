@@ -39,11 +39,21 @@ export async function hasTokens(): Promise<boolean> {
   return tokens !== null;
 }
 
+function param(
+  queryParams: Linking.QueryParams | null | undefined,
+  key: string,
+): string | undefined {
+  const v = queryParams?.[key];
+  if (v === undefined) return undefined;
+  return Array.isArray(v) ? v[0] : v;
+}
+
 /** Parse tokens from a deep link URL: biopay://auth/callback?accessToken=...&refreshToken=... */
 export function parseAuthDeepLink(url: string): Tokens | null {
   try {
     const parsed = Linking.parse(url);
-    const { accessToken, refreshToken } = parsed.queryParams as Record<string, string>;
+    const accessToken = param(parsed.queryParams, "accessToken");
+    const refreshToken = param(parsed.queryParams, "refreshToken");
     if (!accessToken || !refreshToken) return null;
     return { accessToken, refreshToken };
   } catch {

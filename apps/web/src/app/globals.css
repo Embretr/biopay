@@ -4,26 +4,57 @@
 
 @layer base {
   :root {
-    --bg: #0a0a0f;
-    --surface: #111118;
-    --border: #1e1e2e;
-    --accent: #00e5cc;
-    --text: #e2e8f0;
-    --muted: #64748b;
+    --primary: #1f9850;
+    --primary-hover: #187a40;
+    --primary-light: #e8f5ee;
+    --bg: #ffffff;
+    --surface: #f8faf9;
+    --border: #e5e7eb;
+    --text: #111827;
+    --muted: #6b7280;
   }
 
   * {
-    @apply border-[#1e1e2e];
     box-sizing: border-box;
   }
 
   body {
-    @apply bg-[#0a0a0f] text-[#e2e8f0];
+    @apply bg-white text-gray-900;
     font-family: "Inter", system-ui, sans-serif;
   }
 }
 
-/* Terminal scanline effect */
+/* Subtle green blob backgrounds */
+.blob-bg {
+  position: relative;
+  overflow: hidden;
+}
+
+.blob-bg::before {
+  content: "";
+  position: absolute;
+  top: -20%;
+  right: -10%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(31, 152, 80, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.blob-bg::after {
+  content: "";
+  position: absolute;
+  bottom: -10%;
+  left: -10%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(31, 152, 80, 0.05) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Terminal scanline effect (kept for terminal page) */
 .terminal-scanlines::after {
   content: "";
   position: fixed;
@@ -35,8 +66,8 @@
     0deg,
     transparent,
     transparent 2px,
-    rgba(0, 229, 204, 0.015) 2px,
-    rgba(0, 229, 204, 0.015) 4px
+    rgba(31, 152, 80, 0.015) 2px,
+    rgba(31, 152, 80, 0.015) 4px
   );
   pointer-events: none;
   z-index: 10;
@@ -44,8 +75,8 @@
 
 /* Glowing border animation */
 @keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 5px rgba(0, 229, 204, 0.3), 0 0 10px rgba(0, 229, 204, 0.1); }
-  50% { box-shadow: 0 0 10px rgba(0, 229, 204, 0.6), 0 0 20px rgba(0, 229, 204, 0.3), 0 0 40px rgba(0, 229, 204, 0.1); }
+  0%, 100% { box-shadow: 0 0 5px rgba(31, 152, 80, 0.3), 0 0 10px rgba(31, 152, 80, 0.1); }
+  50% { box-shadow: 0 0 10px rgba(31, 152, 80, 0.6), 0 0 20px rgba(31, 152, 80, 0.3), 0 0 40px rgba(31, 152, 80, 0.1); }
 }
 
 .glow-animate {

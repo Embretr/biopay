@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from "react-nat
 import { useLocalSearchParams } from "expo-router";
 import { transactionsApi } from "../../../lib/api";
 
+const PRIMARY = "#1f9850";
+
 type FullTransaction = Awaited<ReturnType<typeof transactionsApi.get>>["data"];
 
 export default function TransactionDetailScreen() {
@@ -22,7 +24,7 @@ export default function TransactionDetailScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator color="#00e5cc" />
+        <ActivityIndicator color={PRIMARY} />
       </View>
     );
   }
@@ -36,8 +38,8 @@ export default function TransactionDetailScreen() {
   }
 
   const isCredit = transaction.type === "DEPOSIT";
-  const sign = isCredit ? "+" : "-";
-  const amountColor = isCredit ? "#22c55e" : "#e2e8f0";
+  const sign = isCredit ? "+" : "−";
+  const amountColor = isCredit ? "#16a34a" : "#111827";
 
   const typeLabels: Record<string, string> = {
     DEPOSIT: "Innskudd",
@@ -46,19 +48,14 @@ export default function TransactionDetailScreen() {
     TRANSFER: "Overføring",
   };
 
-  const statusLabels: Record<string, string> = {
-    COMPLETED: "Fullført",
-    PENDING: "Venter",
-    FAILED: "Feilet",
-    REFUNDED: "Refundert",
+  const statusConfig: Record<string, { color: string; bg: string; border: string; label: string }> = {
+    COMPLETED: { color: "#16a34a", bg: "#dcfce7", border: "#bbf7d0", label: "Fullført" },
+    PENDING: { color: "#d97706", bg: "#fef3c7", border: "#fde68a", label: "Venter" },
+    FAILED: { color: "#dc2626", bg: "#fef2f2", border: "#fecaca", label: "Feilet" },
+    REFUNDED: { color: "#6b7280", bg: "#f3f4f6", border: "#e5e7eb", label: "Refundert" },
   };
 
-  const statusColors: Record<string, string> = {
-    COMPLETED: "#22c55e",
-    PENDING: "#f59e0b",
-    FAILED: "#ef4444",
-    REFUNDED: "#64748b",
-  };
+  const sConf = statusConfig[transaction.status] ?? { color: "#6b7280", bg: "#f3f4f6", border: "#e5e7eb", label: transaction.status };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -66,13 +63,11 @@ export default function TransactionDetailScreen() {
       <View style={styles.amountCard}>
         <Text style={styles.amountLabel}>Beløp</Text>
         <Text style={[styles.amount, { color: amountColor }]}>
-          {sign}
-          {(transaction.amountCents / 100).toLocaleString("nb-NO", { minimumFractionDigits: 2 })} {transaction.currency}
+          {sign}{(transaction.amountCents / 100).toLocaleString("nb-NO", { minimumFractionDigits: 2 })} {transaction.currency}
         </Text>
-        <View style={[styles.statusBadge, { backgroundColor: `${statusColors[transaction.status] ?? "#64748b"}20`, borderColor: `${statusColors[transaction.status] ?? "#64748b"}40` }]}>
-          <Text style={[styles.statusText, { color: statusColors[transaction.status] ?? "#64748b" }]}>
-            {statusLabels[transaction.status] ?? transaction.status}
-          </Text>
+        <View style={[styles.statusBadge, { backgroundColor: sConf.bg, borderColor: sConf.border }]}>
+          <View style={[styles.statusDot, { backgroundColor: sConf.color }]} />
+          <Text style={[styles.statusText, { color: sConf.color }]}>{sConf.label}</Text>
         </View>
       </View>
 
@@ -95,11 +90,7 @@ export default function TransactionDetailScreen() {
             minute: "2-digit",
           })}
         />
-        <DetailRow
-          label="Transaksjons-ID"
-          value={transaction.id}
-          mono
-        />
+        <DetailRow label="Transaksjons-ID" value={transaction.id} mono last />
       </View>
     </ScrollView>
   );
@@ -109,13 +100,15 @@ function DetailRow({
   label,
   value,
   mono = false,
+  last = false,
 }: {
   label: string;
   value: string;
   mono?: boolean;
+  last?: boolean;
 }) {
   return (
-    <View style={styles.detailRow}>
+    <View style={[styles.detailRow, last && styles.detailRowLast]}>
       <Text style={styles.detailLabel}>{label}</Text>
       <Text style={[styles.detailValue, mono && styles.monoValue]} numberOfLines={2}>
         {value}
@@ -125,34 +118,45 @@ function DetailRow({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0a0a0f" },
+  container: { flex: 1, backgroundColor: "#f8faf9" },
   content: { padding: 20, gap: 16, paddingBottom: 40 },
-  centered: { flex: 1, alignItems: "center", justifyContent: "center" },
-  errorText: { color: "#64748b", fontSize: 15 },
+  centered: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#f8faf9" },
+  errorText: { color: "#9ca3af", fontSize: 15 },
+
   amountCard: {
-    backgroundColor: "#111118",
+    backgroundColor: "#ffffff",
     borderRadius: 20,
-    padding: 24,
+    padding: 28,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#1e1e2e",
-    gap: 8,
+    borderColor: "#e5e7eb",
+    gap: 10,
   },
-  amountLabel: { fontSize: 12, color: "#64748b", textTransform: "uppercase", letterSpacing: 1 },
+  amountLabel: {
+    fontSize: 12,
+    color: "#9ca3af",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
   amount: { fontSize: 40, fontWeight: "800", letterSpacing: -1 },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
     marginTop: 4,
   },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusText: { fontSize: 13, fontWeight: "600" },
+
   detailCard: {
-    backgroundColor: "#111118",
+    backgroundColor: "#ffffff",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#1e1e2e",
+    borderColor: "#e5e7eb",
     overflow: "hidden",
   },
   detailRow: {
@@ -161,9 +165,10 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#1e1e2e",
+    borderBottomColor: "#e5e7eb",
   },
-  detailLabel: { fontSize: 14, color: "#64748b", flex: 1 },
-  detailValue: { fontSize: 14, color: "#e2e8f0", flex: 2, textAlign: "right", fontWeight: "500" },
-  monoValue: { fontFamily: "monospace", fontSize: 11 },
+  detailRowLast: { borderBottomWidth: 0 },
+  detailLabel: { fontSize: 14, color: "#6b7280", flex: 1 },
+  detailValue: { fontSize: 14, color: "#111827", flex: 2, textAlign: "right", fontWeight: "500" },
+  monoValue: { fontFamily: "monospace", fontSize: 11, color: "#6b7280" },
 });
