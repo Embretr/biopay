@@ -115,7 +115,7 @@ async function main() {
 
   try {
     const address = await app.listen({
-      port: env.API_PORT,
+      port: env.API_PORT ?? env.PORT ?? 3001,
       host: env.API_HOST,
     });
     console.info(`BioPay API running at ${address}`);

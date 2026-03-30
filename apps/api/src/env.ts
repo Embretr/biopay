@@ -17,7 +17,8 @@ export const env = createEnv({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 
     // ── Server ──────────────────────────────────────────────────────────────
-    API_PORT: z.coerce.number().default(3001),
+    API_PORT: z.coerce.number().optional(),
+    PORT: z.coerce.number().optional(),
     API_HOST: z.string().default("0.0.0.0"),
     CORS_ORIGINS: z.string().default("http://localhost:3000"),
 
