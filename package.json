@@ -2,6 +2,7 @@
   "name": "biopay",
   "private": true,
   "scripts": {
+    "start": "sh -c 'if [ \"$BIOPAY_START\" = api ]; then pnpm --filter @biopay/db exec prisma generate && pnpm --filter @biopay/api start; else pnpm --filter @biopay/web start; fi'",
     "dev": "turbo run dev --parallel",
     "dev:api": "turbo run dev --filter=@biopay/api",
     "dev:web": "turbo run dev --filter=@biopay/web",
